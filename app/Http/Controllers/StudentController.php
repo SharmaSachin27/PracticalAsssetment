@@ -34,28 +34,17 @@ class StudentController extends Controller
      */
     public function store(Request $request)
     {
-        //
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'name' => 'required',
-            'image' => 'mimes:png,jpg,jpeg',
+            'image' => 'required|mimes:jpeg,jpg,png,gif|max:1000'
         ]);
-
-        if ($validator->fails()) {
-            $error = $validator->errors();
-            return back()->withFlashDanger($error);
-        }
-
-        if ($request->hasFile('image')) {
-            $imageName = Str::uuid()->toString() . '.' . $request->file('image')->extension();
-            $imagePath = $request->file('image')->storeAs('images', $imageName, 'public');
-        }
-
-        $student = [
-            'name' => $request->name,
-            'image' => !empty($request->image) ? $imagePath : null
-        ];
-
-        Student::create($student);
+        $imagename = time() . "." . $request->file('image')->extension();
+        $request->file('image')->move(public_path('students'), $imagename);
+        $student = new Student;
+        $student->image = $imagename;
+        $student->name = $request->name;
+        $student->save();
+        return back()->withSuccess('student created');
     }
 
     /**
@@ -72,8 +61,8 @@ class StudentController extends Controller
     public function edit(string $id)
     {
         //
-        $student = Student::where([['id',$id],['status',1]])->first();
-        return view('student.edit',compact('student'));
+        $students = Student::where([['id',$id],['status',1]])->first();
+        return view('student.edit',compact('students'));
     }
 
     /**
@@ -81,28 +70,20 @@ class StudentController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'name' => 'required',
-            'image' => 'mimes:png,jpg,jpeg',
+            'image' => 'nullable|mimes:jpeg,jpg,png,gif|max:1000'
         ]);
 
-        if ($validator->fails()) {
-            $error = $validator->errors();
-            return back()->withFlashDanger($error);
+        $student = Student::where('id', $id)->first();
+        if(isset($request->image)) {
+            $imagename = time() . "." . $request->file('image')->extension();
+            $request->file('image')->move(public_path('students'), $imagename);
+            $student->image = $imagename;
         }
-
-        if ($request->hasFile('image')) {
-            $imageName = Str::uuid()->toString() . '.' . $request->file('image')->extension();
-            $imagePath = $request->file('image')->storeAs('images', $imageName, 'public');
-        }
-
-        $student = [
-                        'name' => $request->name,
-                        'image' => !empty($request->image) ? $imagePath : null
-                    ];
-
-        Student::where('id',$id)->update($student);
+        $student->name = $request->name;
+        $student->save();
+        return back()->withSuccess('student Updated !....');
     }
 
     /**
@@ -111,7 +92,9 @@ class StudentController extends Controller
     public function destroy(string $id)
     {
         //
-        Student::where('id', $id)->delete();
+        $student = Student::where('id', $id)->first();
+        $student->delete();
+        return back()->withSuccess('Student Deleted !....');
 
     }
     public function softDestroy(string $id)
